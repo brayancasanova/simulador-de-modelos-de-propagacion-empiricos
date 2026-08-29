@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Consola de Enlace RF · Modelos de Propagación</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0C10;
+    --panel:#12161C;
+    --panel-2:#171C24;
+    --border:#232935;
+    --text:#E6EDF3;
+    --muted:#7D8A9C;
+    --amber:#FFB020;
+    --amber-dim:rgba(255,176,32,0.12);
+    --green:#5EEAD4;
+    --danger:#F2545B;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(255,176,32,0.05), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif;
+    padding:28px 32px 60px;
+  }
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    gap:16px;
+    margin-bottom:24px;
+    padding-bottom:18px;
+    border-bottom:1px solid var(--border);
+  }
+  header h1{
+    font-size:1.5rem;
+    margin:0 0 4px;
+    letter-spacing:0.3px;
+  }
+  header p{
+    margin:0;
+    color:var(--muted);
+    font-size:0.85rem;
+  }
+  .readout{
+    font-family:'IBM Plex Mono', monospace;
+    background:#000;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:10px 16px;
+    min-width:260px;
+    display:grid;
+    grid-template-columns:auto auto;
+    gap:2px 14px;
+    font-size:0.78rem;
+  }
+  .readout .k{color:var(--muted);}
+  .readout .v{color:var(--amber); text-align:right; font-weight:600;}
+
+  .layout{
+    display:flex;
+    gap:22px;
+    align-items:flex-start;
+    flex-wrap:wrap;
+  }
+  .col-form{flex:1 1 380px; min-width:340px; display:flex; flex-direction:column; gap:16px;}
+  .col-chart{flex:2 1 560px; min-width:460px; display:flex; flex-direction:column; gap:16px;}
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:18px 20px;
+  }
+  .card h3{
+    margin:0 0 14px;
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:1.2px;
+    color:var(--muted);
+    font-weight:600;
+  }
+
+  .tabs{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+  .tab{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.72rem;
+    padding:7px 10px;
+    border:1px solid var(--border);
+    border-radius:6px;
+    background:var(--panel-2);
+    color:var(--muted);
+    cursor:pointer;
+    user-select:none;
+    transition:all .15s ease;
+  }
+  .tab:hover{ color:var(--text); border-color:#3a4353; }
+  .tab.active{
+    background:var(--amber-dim);
+    border-color:var(--amber);
+    color:var(--amber);
+  }
+
+  .form-group{margin-bottom:12px;}
+  .form-group:last-child{margin-bottom:0;}
+  label{
+    display:flex;
+    justify-content:space-between;
+    font-size:0.78rem;
+    color:var(--muted);
+    margin-bottom:5px;
+  }
+  label .unit{ color:#4B5768; font-family:'IBM Plex Mono', monospace; font-size:0.72rem;}
+  input, select{
+    width:100%;
+    padding:9px 10px;
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    border-radius:6px;
+    color:var(--text);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.85rem;
+  }
+  input:focus, select:focus{
+    outline:none;
+    border-color:var(--amber);
+    box-shadow:0 0 0 3px var(--amber-dim);
+  }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .hint{ font-size:0.72rem; color:var(--danger); margin-top:6px; display:none; }
+  .hint.show{ display:block; }
+
+  button.run{
+    width:100%;
+    padding:12px;
+    margin-top:4px;
+    background:var(--amber);
+    color:#1a1200;
+    border:none;
+    border-radius:8px;
+    font-weight:700;
+    font-size:0.85rem;
+    letter-spacing:0.4px;
+    cursor:pointer;
+    transition:filter .15s ease;
+  }
+  button.run:hover{ filter:brightness(1.08); }
+
+  .stats{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.8rem;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .stats .line{ display:flex; justify-content:space-between; border-bottom:1px dashed var(--border); padding-bottom:6px;}
+  .stats .line:last-child{ border-bottom:none; padding-bottom:0;}
+  .stats .lbl{ color:var(--muted); }
+  .stats .val{ color:var(--green); }
+
+  .chart-wrap{ background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:16px; height:440px; }
+
+  ::-webkit-scrollbar{width:8px; height:8px;}
+  ::-webkit-scrollbar-thumb{background:#2a3140; border-radius:4px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Consola de Enlace RF</h1>
+    <p>Simulador comparativo de modelos de propagación · 3GPP, Hata, COST-231, ECC-33, Ikegami, Walfish-Bertoni, Ericsson, Lee</p>
+  </div>
+  <div class="readout" id="liveReadout">
+    <span class="k">MODELO</span><span class="v" id="roModel">—</span>
+    <span class="k">FREQ</span><span class="v" id="roFreq">— MHz</span>
+    <span class="k">RANGO</span><span class="v" id="roRange">— km</span>
+  </div>
+</header>
+
+<div class="layout">
+  <div class="col-form">
+
+    <div class="card">
+      <h3>Modelo de Propagación</h3>
+      <div class="tabs" id="modelTabs"></div>
+      <div class="hint" id="freqHint"></div>
+    </div>
+
+    <form id="simForm">
+
+      <div class="card" id="cardModelOptions">
+        <h3>Configuración del Modelo</h3>
+
+        <div class="form-group" data-field="subModel">
+          <label>Escenario 3GPP</label>
+          <select id="subModel">
+            <option value="uma">UMa · Urbano Macro</option>
+            <option value="umi">UMi · Urbano Micro / Cañón</option>
+            <option value="rma">RMa · Rural Macro</option>
+            <option value="sma">SMa · Suburbano Macro</option>
+            <option value="inh">InH · Oficina Indoor</option>
+            <option value="inf">InF · Fábrica Indoor</option>
+          </select>
+        </div>
+
+        <div class="form-group" data-field="lineOfSight">
+          <label>Visibilidad</label>
+          <select id="lineOfSight">
+            <option value="los">LOS · Línea de Vista</option>
+            <option value="nlos">NLOS · Sin Línea de Vista</option>
+          </select>
+        </div>
+
+        <div class="form-group" data-field="environment">
+          <label>Entorno</label>
+          <select id="environment"></select>
+        </div>
+
+        <div class="form-group" data-field="citySize">
+          <label>Tamaño de ciudad</label>
+          <select id="citySize">
+            <option value="small_medium">Mediana / Suburbana</option>
+            <option value="large">Gran centro metropolitano</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Enlace de Radio</h3>
+
+        <div class="row2">
+          <div class="form-group">
+            <label>Frecuencia <span class="unit">MHz</span></label>
+            <input type="number" id="f" value="3500" step="any" required>
+          </div>
+          <div class="form-group">
+            <label>Distancia máx. <span class="unit">km</span></label>
+            <input type="number" id="dMax" value="5" step="any" required>
+          </div>
+        </div>
+
+        <div class="row2">
+          <div class="form-group">
+            <label>Potencia Tx <span class="unit">W</span></label>
+            <input type="number" id="Pt" value="20" step="any" required>
+          </div>
+          <div class="form-group">
+            <label>Ganancia Tx <span class="unit">dBd</span></label>
+            <input type="number" id="Gt" value="15" step="any" required>
+          </div>
+        </div>
+
+        <div class="row2">
+          <div class="form-group">
+            <label>Ganancia Rx <span class="unit">dBd</span></label>
+            <input type="number" id="Gr" value="0" step="any" required>
+          </div>
+          <div class="form-group"></div>
+        </div>
+
+        <div class="row2">
+          <div class="form-group">
+            <label>Altura Tx (h_BS) <span class="unit">m</span></label>
+            <input type="number" id="hte" value="25" step="any" required>
+          </div>
+          <div class="form-group">
+            <label>Altura Rx (h_UT) <span class="unit">m</span></label>
+            <input type="number" id="hre" value="1.5" step="any" required>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="cardMorphology">
+        <h3>Morfología Urbana</h3>
+
+        <div class="row2">
+          <div class="form-group" data-field="W">
+            <label>Ancho de calle (W) <span class="unit">m</span></label>
+            <input type="number" id="W" value="20" step="any">
+          </div>
+          <div class="form-group" data-field="H">
+            <label>Altura sobre edificios (H) <span class="unit">m</span></label>
+            <input type="number" id="H" value="5" step="any">
+          </div>
+        </div>
+
+        <div class="row2">
+          <div class="form-group" data-field="hR">
+            <label>Altura media edificios (hR) <span class="unit">m</span></label>
+            <input type="number" id="hR" value="15" step="any">
+          </div>
+          <div class="form-group" data-field="b">
+            <label>Separación edificios (b) <span class="unit">m</span></label>
+            <input type="number" id="b" value="20" step="any">
+          </div>
+        </div>
+
+        <div class="row2">
+          <div class="form-group" data-field="lr">
+            <label>Parámetro lr (Ikegami) <span class="unit">m</span></label>
+            <input type="number" id="lr" value="10" step="any">
+          </div>
+          <div class="form-group" data-field="phi">
+            <label>Ángulo orientación (φ) <span class="unit">°</span></label>
+            <input type="number" id="phi" value="90" step="any" min="0" max="90">
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="run">Ejecutar Simulación</button>
+    </form>
+
+    <div class="card">
+      <h3>Resultados</h3>
+      <div class="stats">
+        <div class="line"><span class="lbl">Modelo utilizado</span><span class="val" id="modelUsed">—</span></div>
+        <div class="line" id="rowAlpha"><span class="lbl">10·log₁₀(α₀)</span><span class="val" id="alphaValue">—</span></div>
+        <div class="line" id="rowN"><span class="lbl">Factor n aplicado</span><span class="val" id="nValueDisplay">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-chart">
+    <div class="chart-wrap">
+      <canvas id="prChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---- Configuración de campos visibles por modelo ----
+const MODELS = [
+  { id:'3gpp',            label:'3GPP TR 38.901' },
+  { id:'okumura-hata',    label:'Okumura-Hata' },
+  { id:'cost231-hata',    label:'COST 231-Hata' },
+  { id:'cost231-complete',label:'COST-231 Completo' },
+  { id:'ecc-33',          label:'ECC-33' },
+  { id:'ikegami',         label:'Ikegami' },
+  { id:'walfish-bertoni', label:'Walfish-Bertoni' },
+  { id:'ericsson',        label:'Ericsson 9999' },
+  { id:'lee',             label:'Lee' }
+];
+
+const MODEL_CONFIG = {
+  '3gpp':             { showSubModel:true, showLOS:true, morphology:['W','H'], freqRange:[500,100000] },
+  'okumura-hata':      { showEnvironment:'hata', morphology:[], freqRange:[150,1500] },
+  'cost231-hata':      { showCitySize:true, morphology:[], freqRange:[1500,2000] },
+  'cost231-complete':  { showCitySize:true, morphology:['W','b','phi','hR'], freqRange:null },
+  'ecc-33':            { showCitySize:true, morphology:[], freqRange:[0,4000] },
+  'ikegami':           { morphology:['W','H','lr','phi'], freqRange:null },
+  'walfish-bertoni':   { morphology:['H','hR','b'], freqRange:null },
+  'ericsson':          { showEnvironment:'hata', morphology:[], freqRange:null },
+  'lee':               { showEnvironment:'lee', morphology:[], freqRange:null }
+};
+
+const ENV_OPTIONS = {
+  hata: [
+    {v:'urban', t:'Urbano'},
+    {v:'suburban', t:'Suburbano'},
+    {v:'rural', t:'Rural / Abierto'}
+  ],
+  lee: [
+    {v:'urban', t:'Urbana Filadelfia'},
+    {v:'suburban', t:'Suburbana'},
+    {v:'newark', t:'Urbana Newark'},
+    {v:'tokyo', t:'Urbana Tokyo'}
+  ]
+};
+
+let currentModel = '3gpp';
+let chartInstance = null;
+
+// ---- Construir tabs ----
+const tabsEl = document.getElementById('modelTabs');
+MODELS.forEach(m => {
+  const el = document.createElement('div');
+  el.className = 'tab' + (m.id === currentModel ? ' active' : '');
+  el.textContent = m.label;
+  el.dataset.model = m.id;
+  el.addEventListener('click', () => selectModel(m.id));
+  tabsEl.appendChild(el);
+});
+
+function selectModel(id){
+  currentModel = id;
+  [...tabsEl.children].forEach(t => t.classList.toggle('active', t.dataset.model === id));
+  applyVisibility();
+  runSimulation();
+}
+
+function applyVisibility(){
+  const cfg = MODEL_CONFIG[currentModel];
+
+  // subModel / lineOfSight
+  toggleField('subModel', !!cfg.showSubModel);
+  toggleField('lineOfSight', !!cfg.showLOS);
+
+  // environment (con opciones filtradas)
+  const envGroup = document.querySelector('[data-field="environment"]');
+  if (cfg.showEnvironment){
+    envGroup.style.display = '';
+    const sel = document.getElementById('environment');
+    sel.innerHTML = '';
+    ENV_OPTIONS[cfg.showEnvironment].forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.v; opt.textContent = o.t;
+      sel.appendChild(opt);
+    });
+  } else {
+    envGroup.style.display = 'none';
+  }
+
+  toggleField('citySize', !!cfg.showCitySize);
+
+  // morfología
+  const morphFields = ['W','H','hR','b','lr','phi'];
+  const anyMorph = cfg.morphology.length > 0;
+  document.getElementById('cardMorphology').style.display = anyMorph ? '' : 'none';
+  morphFields.forEach(f => toggleField(f, cfg.morphology.includes(f)));
+
+  // ocultar tarjeta de configuración de modelo si no tiene ningún campo visible
+  const modelOptsVisible = cfg.showSubModel || cfg.showLOS || cfg.showEnvironment || cfg.showCitySize;
+  document.getElementById('cardModelOptions').style.display = modelOptsVisible ? '' : 'none';
+
+  // hint de rango de frecuencia válido
+  const hint = document.getElementById('freqHint');
+  if (cfg.freqRange){
+    hint.textContent = `Rango válido de frecuencia: ${cfg.freqRange[0]}–${cfg.freqRange[1]} MHz`;
+    hint.classList.add('show');
+  } else {
+    hint.classList.remove('show');
+  }
+
+  // filas de resultado solo relevantes en Lee
+  document.getElementById('rowAlpha').style.display = currentModel === 'lee' ? '' : 'none';
+  document.getElementById('rowN').style.display = currentModel === 'lee' ? '' : 'none';
+}
+
+function toggleField(id, visible){
+  const group = document.querySelector(`[data-field="${id}"]`);
+  if (group) group.style.display = visible ? '' : 'none';
+}
+
+function checkFreqRange(){
+  const cfg = MODEL_CONFIG[currentModel];
+  const f = parseFloat(document.getElementById('f').value);
+  const hint = document.getElementById('freqHint');
+  if (cfg.freqRange){
+    const [lo, hi] = cfg.freqRange;
+    if (f < lo || f > hi){
+      hint.textContent = `Fuera de rango recomendado (${lo}–${hi} MHz) para este modelo — el resultado puede ser poco confiable.`;
+      hint.classList.add('show');
+    } else {
+      hint.textContent = `Rango válido de frecuencia: ${lo}–${hi} MHz`;
+      hint.classList.add('show');
+    }
+  }
+}
+
+async function runSimulation(){
+  checkFreqRange();
+
+  const payload = {
+    model: currentModel,
+    subModel: document.getElementById('subModel').value,
+    lineOfSight: document.getElementById('lineOfSight').value,
+    environment: document.getElementById('environment').value || 'urban',
+    citySize: document.getElementById('citySize').value,
+    f: parseFloat(document.getElementById('f').value),
+    Pt: parseFloat(document.getElementById('Pt').value),
+    Gt: parseFloat(document.getElementById('Gt').value),
+    Gr: parseFloat(document.getElementById('Gr').value),
+    hte: parseFloat(document.getElementById('hte').value),
+    hre: parseFloat(document.getElementById('hre').value),
+    W: parseFloat(document.getElementById('W').value),
+    H: parseFloat(document.getElementById('H').value),
+    hR: parseFloat(document.getElementById('hR').value),
+    b: parseFloat(document.getElementById('b').value),
+    lr: parseFloat(document.getElementById('lr').value),
+    phi: parseFloat(document.getElementById('phi').value),
+    dMax: parseFloat(document.getElementById('dMax').value)
+  };
+
+  document.getElementById('roModel').textContent = MODELS.find(m => m.id === currentModel).label;
+  document.getElementById('roFreq').textContent = payload.f + ' MHz';
+  document.getElementById('roRange').textContent = payload.dMax + ' km';
+
+  try {
+    const res = await fetch('/api/simulate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const result = await res.json();
+
+    if (result.success){
+      document.getElementById('modelUsed').textContent = result.summary.model_used;
+      document.getElementById('alphaValue').textContent = (result.summary.tenLogAlpha0 ?? '—') + ' dB';
+      document.getElementById('nValueDisplay').textContent = result.summary.n_used ?? '—';
+      updateChart(result.data.distances, result.data.prValues, currentModel);
+    } else {
+      console.error('Error en simulación:', result.error);
+    }
+  } catch (err){
+    console.error('Error de conexión al backend:', err);
+  }
+}
+
+function updateChart(labels, dataPoints, modelId){
+  const ctx = document.getElementById('prChart').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Potencia recibida Pr (dBm)',
+        data: dataPoints,
+        borderColor: '#FFB020',
+        backgroundColor: 'rgba(255,176,32,0.08)',
+        pointRadius: 0,
+        borderWidth: 2,
+        fill: true,
+        tension: 0.15
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      color: '#7D8A9C',
+      plugins: {
+        legend: { labels: { color: '#E6EDF3', font: { family: 'IBM Plex Mono' } } },
+        title: {
+          display: true,
+          text: MODELS.find(m => m.id === modelId).label + ' · Pr vs Distancia',
+          color: '#E6EDF3',
+          font: { family: 'IBM Plex Mono', size: 13 }
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 'Distancia (km)', color:'#7D8A9C' },
+          ticks: { color:'#4B5768', maxTicksLimit: 12 },
+          grid: { color:'#1B212B' }
+        },
+        y: {
+          title: { display: true, text: 'Pr (dBm)', color:'#7D8A9C' },
+          ticks: { color:'#4B5768' },
+          grid: { color:'#1B212B' }
+        }
+      }
+    }
+  });
+}
+
+document.getElementById('simForm').addEventListener('submit', e => {
+  e.preventDefault();
+  runSimulation();
+});
+document.getElementById('f').addEventListener('input', checkFreqRange);
+
+applyVisibility();
+runSimulation();
+</script>
+</body>
+</html>
